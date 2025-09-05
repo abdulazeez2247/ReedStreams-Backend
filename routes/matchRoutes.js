@@ -33,7 +33,7 @@ router.options("/proxy-stream", (req, res) => {
 
 // Handle OPTIONS requests for streams endpoint as well
 router.options("/streams", (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', 'https://reed-streams-live-sports-doxe.vercel.app');
+  res.setHeader('Access-Control-Allow-Origin', 'https://reed-streams-live-sports-doxe.vercel.app', 'https://reedstreams.live');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -42,7 +42,7 @@ router.options("/streams", (req, res) => {
 
 // Handle OPTIONS requests for match diary endpoint
 router.options("/:sportName/:matchId", (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', 'https://reed-streams-live-sports-doxe.vercel.app');
+  res.setHeader('Access-Control-Allow-Origin', 'https://reed-streams-live-sports-doxe.vercel.app', 'https://reedstreams.live');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Allow-Credentials', 'true');

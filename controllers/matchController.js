@@ -136,7 +136,7 @@ const SPORTS_MAPPING = {
 // };
 const getproxyStream = async (req, res, next) => {
   // Add CORS headers at the beginning
-  res.setHeader('Access-Control-Allow-Origin', 'https://reed-streams-live-sports-doxe.vercel.app');
+  res.setHeader('Access-Control-Allow-Origin', 'https://reed-streams-live-sports-doxe.vercel.app', 'https://reedstreams.live');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
