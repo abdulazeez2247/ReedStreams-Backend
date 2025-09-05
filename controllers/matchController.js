@@ -8,8 +8,8 @@ const SECRET_KEY = process.env.THE_SPORTS_API_SECRET;
 
 const SPORTS_MAPPING = {
   football: { id: 1, name: "Football", slug: "football" },
-  amfootball: { id: 6, name: "American Football", slug: "amfootball" },
-  baseball: { id: 2, name: "Baseball", slug: "baseball" },
+  amfootball: { id: 2, name: "American Football", slug: "amfootball" },
+  baseball: { id: 6, name: "Baseball", slug: "baseball" },
 
 };
 
@@ -269,8 +269,8 @@ const getLiveStreams = async (req, res, next) => {
       .map((s) => {
         let sport_name = "unknown";
         if (s.sport_id === 1) sport_name = "football";
-        if (s.sport_id === 2) sport_name = "baseball";
-        if (s.sport_id === 6) sport_name = "amfootball";
+        if (s.sport_id === 6) sport_name = "baseball";
+        if (s.sport_id === 2) sport_name = "amfootball";
 
         const match_time_unix = s.match_time;
 
