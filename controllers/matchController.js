@@ -146,22 +146,24 @@ const getproxyStream = async (req, res, next) => {
   }
 
   const streamUrl = req.query.url;
-  const isM3U8 = streamUrl.endsWith(".m3u8");
-
+  
   if (!streamUrl) {
     return next(new AppError("Stream URL is required for proxy.", 400));
   }
 
   try {
-    const originalCDNBasePath = streamUrl.substring(
+    console.log('Proxying URL:', streamUrl);
+    
+    const decodedUrl = decodeURIComponent(streamUrl);
+    const originalCDNBasePath = decodedUrl.substring(
       0,
-      streamUrl.lastIndexOf("/") + 1
+      decodedUrl.lastIndexOf("/") + 1
     );
 
     const axiosConfig = {
       method: "get",
-      url: streamUrl,
-      timeout: 30000,
+      url: decodedUrl,
+      timeout: 10000, // Reduced timeout to 10 seconds
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -170,8 +172,12 @@ const getproxyStream = async (req, res, next) => {
         "Accept-Encoding": "identity",
         Connection: "keep-alive",
       },
+      validateStatus: function (status) {
+        return status < 500; // Reject only if status code is greater than or equal to 500
+      }
     };
 
+    const isM3U8 = decodedUrl.endsWith(".m3u8");
     if (isM3U8) {
       axiosConfig.responseType = "text";
     } else {
@@ -179,7 +185,10 @@ const getproxyStream = async (req, res, next) => {
     }
 
     const response = await axios(axiosConfig);
+    
+    console.log('Proxy response status:', response.status);
 
+    // Set headers from original response
     if (response.headers["content-type"]) {
       res.setHeader("Content-Type", response.headers["content-type"]);
     }
@@ -202,7 +211,6 @@ const getproxyStream = async (req, res, next) => {
             !line.startsWith("http")
           ) {
             const absoluteCDNUrl = new URL(line, originalCDNBasePath).href;
-
             const yourProxyBase =
               "https://reedstreams-backend.onrender.com/api/matches/proxy-stream?url=";
             return `${yourProxyBase}${encodeURIComponent(absoluteCDNUrl)}`;
@@ -218,51 +226,25 @@ const getproxyStream = async (req, res, next) => {
       response.data.on("error", (pipeError) => {
         console.error("Error during stream piping:", pipeError);
         if (!res.headersSent) {
-          return next(
-            new AppError(`Stream piping error: ${pipeError.message}`, 500)
-          );
+          res.status(500).send("Stream piping error");
         }
       });
     }
   } catch (error) {
-    console.error("Error fetching or proxying stream from CDN:");
+    console.error("Error in proxy stream:", error.message);
+    
+    if (error.code === "ECONNABORTED") {
+      return res.status(504).json({ error: "Stream source request timed out" });
+    }
+    
     if (error.response) {
-      console.error("Status:", error.response.status);
-      console.error("Headers:", error.response.headers);
-
-      console.error(
-        "Error response data:",
-        error.response.data?.toString
-          ? error.response.data.toString()
-          : error.response.data
-      );
-    } else if (error.request) {
-      console.error("No response received, request made:", error.request);
-    } else {
-      console.error("Error message:", error.message);
+      // Forward the status code from the target server
+      return res.status(error.response.status).json({ 
+        error: `Stream source returned ${error.response.status}` 
+      });
     }
-
-    if (error.response && error.response.status === 403) {
-      return next(
-        new AppError(
-          "Access to stream source forbidden. It might be hotlinking protected or require specific headers.",
-          403
-        )
-      );
-    } else if (error.response && error.response.status) {
-      return next(
-        new AppError(
-          `Failed to fetch stream from source: Status ${error.response.status}`,
-          error.response.status
-        )
-      );
-    } else if (error.code === "ECONNABORTED") {
-      return next(new AppError("Stream source request timed out.", 504));
-    } else {
-      return next(
-        new AppError(`Failed to proxy stream: ${error.message}`, 500)
-      );
-    }
+    
+    return res.status(500).json({ error: "Failed to proxy stream" });
   }
 };
 const getLiveStreams = async (req, res, next) => {
