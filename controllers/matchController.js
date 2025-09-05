@@ -12,7 +12,139 @@ const SPORTS_MAPPING = {
   amfootball: { id: 6, name: "American Football", slug: "amfootball" },
 };
 
+// const getproxyStream = async (req, res, next) => {
+//   const streamUrl = req.query.url;
+//   const isM3U8 = streamUrl.endsWith(".m3u8");
+
+//   if (!streamUrl) {
+//     return next(new AppError("Stream URL is required for proxy.", 400));
+//   }
+
+//   try {
+//     const originalCDNBasePath = streamUrl.substring(
+//       0,
+//       streamUrl.lastIndexOf("/") + 1
+//     );
+
+//     const axiosConfig = {
+//       method: "get",
+//       url: streamUrl,
+//       timeout: 30000,
+//       headers: {
+//         "User-Agent":
+//           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+//         Referer: originalCDNBasePath,
+//         Accept: "*/*",
+//         "Accept-Encoding": "identity",
+//         Connection: "keep-alive",
+//       },
+//     };
+
+//     if (isM3U8) {
+//       axiosConfig.responseType = "text";
+//     } else {
+//       axiosConfig.responseType = "stream";
+//     }
+
+//     const response = await axios(axiosConfig);
+
+//     if (response.headers["content-type"]) {
+//       res.setHeader("Content-Type", response.headers["content-type"]);
+//     }
+//     if (response.headers["cache-control"]) {
+//       res.setHeader("Cache-Control", response.headers["cache-control"]);
+//     }
+
+//     if (isM3U8) {
+//       let m3u8Content = response.data;
+
+//       m3u8Content = m3u8Content
+//         .split("\n")
+//         .map((line) => {
+//           if (line.startsWith("#") || line.trim() === "") {
+//             return line;
+//           }
+
+//           if (
+//             (line.endsWith(".m3u8") || line.endsWith(".ts")) &&
+//             !line.startsWith("http")
+//           ) {
+//             const absoluteCDNUrl = new URL(line, originalCDNBasePath).href;
+
+//             const yourProxyBase =
+//               "https://reedstreams-backend.onrender.com/api/matches/proxy-stream?url=";
+//             return `${yourProxyBase}${encodeURIComponent(absoluteCDNUrl)}`;
+//           }
+//           return line;
+//         })
+//         .join("\n");
+
+//       res.send(m3u8Content);
+//     } else {
+//       response.data.pipe(res);
+
+//       response.data.on("error", (pipeError) => {
+//         console.error("Error during stream piping:", pipeError);
+//         if (!res.headersSent) {
+//           return next(
+//             new AppError(`Stream piping error: ${pipeError.message}`, 500)
+//           );
+//         }
+//       });
+//     }
+//   } catch (error) {
+//     console.error("Error fetching or proxying stream from CDN:");
+//     if (error.response) {
+//       console.error("Status:", error.response.status);
+//       console.error("Headers:", error.response.headers);
+
+//       console.error(
+//         "Error response data:",
+//         error.response.data?.toString
+//           ? error.response.data.toString()
+//           : error.response.data
+//       );
+//     } else if (error.request) {
+//       console.error("No response received, request made:", error.request);
+//     } else {
+//       console.error("Error message:", error.message);
+//     }
+
+//     if (error.response && error.response.status === 403) {
+//       return next(
+//         new AppError(
+//           "Access to stream source forbidden. It might be hotlinking protected or require specific headers.",
+//           403
+//         )
+//       );
+//     } else if (error.response && error.response.status) {
+//       return next(
+//         new AppError(
+//           `Failed to fetch stream from source: Status ${error.response.status}`,
+//           error.response.status
+//         )
+//       );
+//     } else if (error.code === "ECONNABORTED") {
+//       return next(new AppError("Stream source request timed out.", 504));
+//     } else {
+//       return next(
+//         new AppError(`Failed to proxy stream: ${error.message}`, 500)
+//       );
+//     }
+//   }
+// };
 const getproxyStream = async (req, res, next) => {
+  // Add CORS headers at the beginning
+  res.setHeader('Access-Control-Allow-Origin', 'https://reed-streams-live-sports-doxe.vercel.app');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight OPTIONS requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   const streamUrl = req.query.url;
   const isM3U8 = streamUrl.endsWith(".m3u8");
 
@@ -133,8 +265,6 @@ const getproxyStream = async (req, res, next) => {
     }
   }
 };
-
-
 const getLiveStreams = async (req, res, next) => {
   try {
     console.log("⏳ Fetching fresh live streams from API...");
@@ -230,8 +360,6 @@ const getLiveStreams = async (req, res, next) => {
     );
   }
 };
-
-
 const getSingleMatchDiary = async (req, res, next) => {
   const { sportName, matchId } = req.params;
 
