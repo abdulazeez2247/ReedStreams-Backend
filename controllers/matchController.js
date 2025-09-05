@@ -135,34 +135,26 @@ const SPORTS_MAPPING = {
 //   }
 // };
 const getproxyStream = async (req, res, next) => {
-  // ✅ Allow multiple origins dynamically
-  const allowedOrigins = [
-    "https://reed-streams-live-sports-doxe.vercel.app",
-    "https://admin-pi-ruby.vercel.app",
-    "http://127.0.0.1:5501",
-    "https://reedstreams.live"
-  ];
+  // Add CORS headers at the beginning
+  res.setHeader('Access-Control-Allow-Origin',  'https://reedstreams.live');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  }
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-
-  // ✅ Handle preflight OPTIONS request
-  if (req.method === "OPTIONS") {
+  // Handle preflight OPTIONS requests
+  if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   const streamUrl = req.query.url;
+  
   if (!streamUrl) {
     return next(new AppError("Stream URL is required for proxy.", 400));
   }
 
   try {
-    console.log("Proxying URL:", streamUrl);
+    console.log('Proxying URL:', streamUrl);
+    
     const decodedUrl = decodeURIComponent(streamUrl);
     const originalCDNBasePath = decodedUrl.substring(
       0,
@@ -172,7 +164,7 @@ const getproxyStream = async (req, res, next) => {
     const axiosConfig = {
       method: "get",
       url: decodedUrl,
-      timeout: 10000,
+      timeout: 10000, // Reduced timeout to 10 seconds
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -181,16 +173,23 @@ const getproxyStream = async (req, res, next) => {
         "Accept-Encoding": "identity",
         Connection: "keep-alive",
       },
-      validateStatus: (status) => status < 500
+      validateStatus: function (status) {
+        return status < 500; // Reject only if status code is greater than or equal to 500
+      }
     };
 
     const isM3U8 = decodedUrl.endsWith(".m3u8");
-    if (isM3U8) axiosConfig.responseType = "text";
-    else axiosConfig.responseType = "stream";
+    if (isM3U8) {
+      axiosConfig.responseType = "text";
+    } else {
+      axiosConfig.responseType = "stream";
+    }
 
     const response = await axios(axiosConfig);
-    console.log("Proxy response status:", response.status);
+    
+    console.log('Proxy response status:', response.status);
 
+    // Set headers from original response
     if (response.headers["content-type"]) {
       res.setHeader("Content-Type", response.headers["content-type"]);
     }
@@ -200,10 +199,14 @@ const getproxyStream = async (req, res, next) => {
 
     if (isM3U8) {
       let m3u8Content = response.data;
+
       m3u8Content = m3u8Content
         .split("\n")
         .map((line) => {
-          if (line.startsWith("#") || line.trim() === "") return line;
+          if (line.startsWith("#") || line.trim() === "") {
+            return line;
+          }
+
           if (
             (line.endsWith(".m3u8") || line.endsWith(".ts")) &&
             !line.startsWith("http")
@@ -220,6 +223,7 @@ const getproxyStream = async (req, res, next) => {
       res.send(m3u8Content);
     } else {
       response.data.pipe(res);
+
       response.data.on("error", (pipeError) => {
         console.error("Error during stream piping:", pipeError);
         if (!res.headersSent) {
@@ -229,18 +233,21 @@ const getproxyStream = async (req, res, next) => {
     }
   } catch (error) {
     console.error("Error in proxy stream:", error.message);
+    
     if (error.code === "ECONNABORTED") {
       return res.status(504).json({ error: "Stream source request timed out" });
     }
+    
     if (error.response) {
-      return res
-        .status(error.response.status)
-        .json({ error: `Stream source returned ${error.response.status}` });
+      // Forward the status code from the target server
+      return res.status(error.response.status).json({ 
+        error: `Stream source returned ${error.response.status}` 
+      });
     }
+    
     return res.status(500).json({ error: "Failed to proxy stream" });
   }
 };
-
 const getLiveStreams = async (req, res, next) => {
   try {
     console.log("⏳ Fetching fresh live streams from API...");
