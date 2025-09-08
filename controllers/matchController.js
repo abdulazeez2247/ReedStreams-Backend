@@ -8,7 +8,7 @@ const SECRET_KEY = process.env.THE_SPORTS_API_SECRET;
 
 const SPORTS_MAPPING = {
   football: { id: 1, name: "Football", slug: "football" },
-  amfootball: { id: 2, name: "American Football", slug: "amfootball" },
+  amfootball: { id: 17, name: "American Football", slug: "amfootball" },
   baseball: { id: 6, name: "Baseball", slug: "baseball" },
 
 };
@@ -174,7 +174,7 @@ const getproxyStream = async (req, res, next) => {
         Connection: "keep-alive",
       },
       validateStatus: function (status) {
-        return status < 500; // Reject only if status code is greater than or equal to 500
+        return status < 500; 
       }
     };
 
