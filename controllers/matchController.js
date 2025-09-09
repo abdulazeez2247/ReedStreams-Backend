@@ -122,104 +122,6 @@ const getproxyStream = async (req, res, next) => {
     return res.status(500).json({ error: "Failed to proxy stream" });
   }
 };
-// const getLiveStreams = async (req, res, next) => {
-//   try {
-//     console.log("⏳ Fetching fresh live streams from API...");
-//     const { data: streamData } = await axios.get(
-//       `${API_BASE_URL}/v1/video/play/stream/list`,
-//       {
-//         params: { user: USER_KEY, secret: SECRET_KEY },
-//         timeout: 30000,
-//       }
-//     );
-
-//     if (!streamData?.results?.length) {
-//       return next(new AppError("No live streams found from API.", 404));
-//     }
-
-//     const now = Date.now();
-//     const filteredStreams = streamData.results
-//       .filter((s) => [1, 6, 17].includes(s.sport_id))
-//       .map((s) => {
-//         let sport_name = "unknown";
-//         if (s.sport_id === 1) sport_name = "football";
-//         if (s.sport_id === 6) sport_name = "baseball";
-//         if (s.sport_id === 17) sport_name = "amfootball";
-
-//         const match_time_unix = s.match_time;
-
-//         let match_time_date = null;
-//         let start_time_formatted = "N/A";
-
-//         if (match_time_unix) {
-//           try {
-//             const timestamp =
-//               typeof match_time_unix === "string"
-//                 ? parseInt(match_time_unix)
-//                 : match_time_unix;
-
-//             if (!isNaN(timestamp)) {
-//               match_time_date = new Date(timestamp * 1000);
-//               start_time_formatted = match_time_date.toLocaleString();
-//             }
-//           } catch (e) {
-//             console.warn("Invalid match_time format:", match_time_unix);
-//           }
-//         }
-
-//         const home_team = s.home || "TBD";
-//         const away_team = s.away || "TBD";
-//         const competition_name = s.comp || s.competition_name || "Unknown";
-
-//         let match_status = "LIVE";
-//         if (match_time_unix) {
-//           const timeDiff = now - match_time_unix * 1000;
-//           if (timeDiff >= 3 * 60 * 60 * 1000) {
-//             match_status = "FINISHED";
-//           } else if (timeDiff < 0) {
-//             match_status = "UPCOMING";
-//           }
-//         }
-
-//         if (!s.playurl1 && !s.playurl2) {
-//           match_status = "FINISHED";
-//         }
-
-//         return {
-//           sport_name,
-//           competition_name,
-//           home_name: home_team,
-//           away_name: away_team,
-//           start_time: start_time_formatted,
-//           match_status,
-//           match_id: s.id || null,
-//           playurl1: s.playurl1 || null,
-//           playurl2: s.playurl2 || null,
-//           raw_match_time: match_time_unix,
-//         };
-//       });
-
-//     if (!filteredStreams.length) {
-//       return next(
-//         new AppError(
-//           "No football, baseball or American football streams found.",
-//           404
-//         )
-//       );
-//     }
-
-//     res.status(200).json({
-//       status: "success",
-//       results: filteredStreams.length,
-//       data: { streams: filteredStreams },
-//     });
-//   } catch (err) {
-//     const errorMessage = err.response?.data?.message || err.message;
-//     return next(
-//       new AppError("Failed to fetch live matches", 500, errorMessage)
-//     );
-//   }
-// };
 const getLiveStreams = async (req, res, next) => {
   try {
     console.log("⏳ Fetching fresh live streams from API...");
@@ -231,15 +133,12 @@ const getLiveStreams = async (req, res, next) => {
       }
     );
 
-    // FIX: The API returns an array directly, not streamData.results
-    const streamsArray = Array.isArray(streamData) ? streamData : [];
-    
-    if (!streamsArray.length) {
+    if (!streamData?.results?.length) {
       return next(new AppError("No live streams found from API.", 404));
     }
 
     const now = Date.now();
-    const filteredStreams = streamsArray
+    const filteredStreams = streamData.results
       .filter((s) => [1, 6, 17].includes(s.sport_id))
       .map((s) => {
         let sport_name = "unknown";
@@ -272,17 +171,17 @@ const getLiveStreams = async (req, res, next) => {
         const away_team = s.away || "TBD";
         const competition_name = s.comp || s.competition_name || "Unknown";
 
-        // FIX: Handle numeric match_status (44 = LIVE)
         let match_status = "LIVE";
-        if (s.match_status === 44) {
-          match_status = "LIVE";
-        } else if (s.match_status === 43) { // Example: 43 might be FINISHED
-          match_status = "FINISHED";
+        if (match_time_unix) {
+          const timeDiff = now - match_time_unix * 1000;
+          if (timeDiff >= 3 * 60 * 60 * 1000) {
+            match_status = "FINISHED";
+          } else if (timeDiff < 0) {
+            match_status = "UPCOMING";
+          }
         }
 
-        // FIX: Check for empty strings too
-        const hasValidUrl = (url) => url && url.trim() !== "";
-        if (!hasValidUrl(s.playurl1) && !hasValidUrl(s.playurl2)) {
+        if (!s.playurl1 && !s.playurl2) {
           match_status = "FINISHED";
         }
 
@@ -293,7 +192,7 @@ const getLiveStreams = async (req, res, next) => {
           away_name: away_team,
           start_time: start_time_formatted,
           match_status,
-          match_id: s.match_id || s.id || null,
+          match_id: s.id || null,
           playurl1: s.playurl1 || null,
           playurl2: s.playurl2 || null,
           raw_match_time: match_time_unix,
@@ -321,6 +220,107 @@ const getLiveStreams = async (req, res, next) => {
     );
   }
 };
+// const getLiveStreams = async (req, res, next) => {
+//   try {
+//     console.log("⏳ Fetching fresh live streams from API...");
+//     const { data: streamData } = await axios.get(
+//       `${API_BASE_URL}/v1/video/play/stream/list`,
+//       {
+//         params: { user: USER_KEY, secret: SECRET_KEY },
+//         timeout: 30000,
+//       }
+//     );
+
+//     // FIX: The API returns an array directly, not streamData.results
+//     const streamsArray = Array.isArray(streamData) ? streamData : [];
+    
+//     if (!streamsArray.length) {
+//       return next(new AppError("No live streams found from API.", 404));
+//     }
+
+//     const now = Date.now();
+//     const filteredStreams = streamsArray
+//       .filter((s) => [1, 6, 17].includes(s.sport_id))
+//       .map((s) => {
+//         let sport_name = "unknown";
+//         if (s.sport_id === 1) sport_name = "football";
+//         if (s.sport_id === 6) sport_name = "baseball";
+//         if (s.sport_id === 17) sport_name = "amfootball";
+
+//         const match_time_unix = s.match_time;
+
+//         let match_time_date = null;
+//         let start_time_formatted = "N/A";
+
+//         if (match_time_unix) {
+//           try {
+//             const timestamp =
+//               typeof match_time_unix === "string"
+//                 ? parseInt(match_time_unix)
+//                 : match_time_unix;
+
+//             if (!isNaN(timestamp)) {
+//               match_time_date = new Date(timestamp * 1000);
+//               start_time_formatted = match_time_date.toLocaleString();
+//             }
+//           } catch (e) {
+//             console.warn("Invalid match_time format:", match_time_unix);
+//           }
+//         }
+
+//         const home_team = s.home || "TBD";
+//         const away_team = s.away || "TBD";
+//         const competition_name = s.comp || s.competition_name || "Unknown";
+
+//         // FIX: Handle numeric match_status (44 = LIVE)
+//         let match_status = "LIVE";
+//         if (s.match_status === 44) {
+//           match_status = "LIVE";
+//         } else if (s.match_status === 43) { // Example: 43 might be FINISHED
+//           match_status = "FINISHED";
+//         }
+
+//         // FIX: Check for empty strings too
+//         const hasValidUrl = (url) => url && url.trim() !== "";
+//         if (!hasValidUrl(s.playurl1) && !hasValidUrl(s.playurl2)) {
+//           match_status = "FINISHED";
+//         }
+
+//         return {
+//           sport_name,
+//           competition_name,
+//           home_name: home_team,
+//           away_name: away_team,
+//           start_time: start_time_formatted,
+//           match_status,
+//           match_id: s.match_id || s.id || null,
+//           playurl1: s.playurl1 || null,
+//           playurl2: s.playurl2 || null,
+//           raw_match_time: match_time_unix,
+//         };
+//       });
+
+//     if (!filteredStreams.length) {
+//       return next(
+//         new AppError(
+//           "No football, baseball or American football streams found.",
+//           404
+//         )
+//       );
+//     }
+
+//     res.status(200).json({
+//       status: "success",
+//       results: filteredStreams.length,
+//       data: { streams: filteredStreams },
+//     });
+//   } catch (err) {
+//     const errorMessage = err.response?.data?.message || err.message;
+//     return next(
+//       new AppError("Failed to fetch live matches", 500, errorMessage)
+//     );
+//   }
+// };
 const getSingleMatchDiary = async (req, res, next) => {
   const { sportName, matchId } = req.params;
 
