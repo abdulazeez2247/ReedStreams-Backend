@@ -139,7 +139,7 @@ const getLiveStreams = async (req, res, next) => {
 
     const now = Date.now();
     const filteredStreams = streamData.results
-      .filter((s) => [1, 2, 6].includes(s.sport_id))
+      .filter((s) => [1, 6, 17].includes(s.sport_id))
       .map((s) => {
         let sport_name = "unknown";
         if (s.sport_id === 1) sport_name = "football";
