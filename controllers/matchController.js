@@ -144,7 +144,7 @@ const getLiveStreams = async (req, res, next) => {
         let sport_name = "unknown";
         if (s.sport_id === 1) sport_name = "football";
         if (s.sport_id === 6) sport_name = "baseball";
-        if (s.sport_id === 2) sport_name = "amfootball";
+        if (s.sport_id === 17) sport_name = "amfootball";
 
         const match_time_unix = s.match_time;
 
