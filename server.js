@@ -6,6 +6,7 @@ const connectDB = require('./config/db');
 const matchRoutes = require('./routes/matchRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+
 const AppError = require('./utils/appError');
 
 const app = express();

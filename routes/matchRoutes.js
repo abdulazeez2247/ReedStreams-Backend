@@ -19,7 +19,7 @@ const router = express.Router();
 const {
   getLiveStreams,
   getproxyStream,
-  getSingleMatchDiary
+  getSingleMatchDiary,
 } = require("../controllers/matchController");
 
 // Handle OPTIONS requests for preflight (CORS)
