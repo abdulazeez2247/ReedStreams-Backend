@@ -19,7 +19,8 @@ const router = express.Router();
 const {
   getLiveStreams,
   getproxyStream,
-  getSingleMatchDiary
+  getSingleMatchDiary,
+  logStreamPlay,
 } = require("../controllers/matchController");
 
 // Handle OPTIONS requests for preflight (CORS)
@@ -53,5 +54,6 @@ router.options("/:sportName/:matchId", (req, res) => {
 router.get("/streams", getLiveStreams);            
 router.get("/proxy-stream", getproxyStream);      
 router.get("/:sportName/:matchId", getSingleMatchDiary); 
+router.post("/log", logStreamPlay);
 
 module.exports = router;

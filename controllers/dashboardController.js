@@ -1,8 +1,8 @@
 const axios = require('axios');
 const dotenv = require('dotenv').config();
 const Match = require('../models/match');
-const UserSession = require('../models/UserSession');
-const StreamEvent = require('../models/StreamEvent');
+const Visitor = require('../models/visitor');
+const stream = require('../models/stream');
 const AppError = require('../utils/appError');
 
 const API_BASE_URL = 'https://api.thesports.com';
@@ -45,67 +45,89 @@ const SPORTS_MAPPING = {
 //     res.status(500).json({ error: 'Failed to fetch live stats', details: errorMessage });
 //   }
 // };
-exports.getLiveStats = async (req, res, next) => {
+// exports.getLiveStats = async (req, res, next) => {
+//   try {
+//     // Get unique users in last 24 hours
+//     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+//     const totalUsers = await UserSession.countDocuments({
+//       lastSeen: { $gte: twentyFourHoursAgo }
+//     });
+    
+//     // Get active streams (stream events started but not stopped in last 3 hours)
+//     const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
+    
+//     const activeStreams = await StreamEvent.aggregate([
+//       {
+//         $match: {
+//           timestamp: { $gte: threeHoursAgo },
+//           action: { $in: ['start', 'stop'] }
+//         }
+//       },
+//       {
+//         $group: {
+//           _id: '$ipAddress',
+//           events: { $push: { action: '$action', timestamp: '$timestamp' } }
+//         }
+//       },
+//       {
+//         $match: {
+//           $expr: {
+//             $let: {
+//               vars: {
+//                 lastEvent: { $arrayElemAt: ['$events', -1] }
+//               },
+//               in: { $eq: ['$$lastEvent.action', 'start'] }
+//             }
+//           }
+//         }
+//       },
+//       {
+//         $count: 'activeStreams'
+//       }
+//     ]);
+    
+//     const totalStreams = activeStreams[0]?.activeStreams || 0;
+    
+//     // Get active sports from your actual matches
+//     const activeSports = await Match.distinct('sport', {
+//       isVisible: true,
+//       matchStatus: { $in: ['LIVE', 'UPCOMING'] }
+//     });
+    
+//     res.status(200).json({
+//       data: {
+//         totalUsers,
+//         totalStreams,
+//         activeSports: activeSports.length
+//       },
+//     });
+//   } catch (err) {
+//     const errorMessage = err.response?.data?.message || err.message;
+//     res.status(500).json({ error: 'Failed to fetch live stats', details: errorMessage });
+//   }
+// };
+
+exports.getLiveStats = async (req, res) => {
   try {
-    // Get unique users in last 24 hours
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const totalUsers = await UserSession.countDocuments({
-      lastSeen: { $gte: twentyFourHoursAgo }
-    });
-    
-    // Get active streams (stream events started but not stopped in last 3 hours)
-    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
-    
-    const activeStreams = await StreamEvent.aggregate([
-      {
-        $match: {
-          timestamp: { $gte: threeHoursAgo },
-          action: { $in: ['start', 'stop'] }
-        }
-      },
-      {
-        $group: {
-          _id: '$ipAddress',
-          events: { $push: { action: '$action', timestamp: '$timestamp' } }
-        }
-      },
-      {
-        $match: {
-          $expr: {
-            $let: {
-              vars: {
-                lastEvent: { $arrayElemAt: ['$events', -1] }
-              },
-              in: { $eq: ['$$lastEvent.action', 'start'] }
-            }
-          }
-        }
-      },
-      {
-        $count: 'activeStreams'
-      }
-    ]);
-    
-    const totalStreams = activeStreams[0]?.activeStreams || 0;
-    
-    // Get active sports from your actual matches
-    const activeSports = await Match.distinct('sport', {
-      isVisible: true,
-      matchStatus: { $in: ['LIVE', 'UPCOMING'] }
-    });
-    
+    const totalUsers = await Visitor.countDocuments();
+    const totalStreams = await Stream.aggregate([
+      { $group: { _id: null, total: { $sum: "$playCount" } } }
+    ]).then(r => (r[0] ? r[0].total : 0));
+
+    const activeSports = await Stream.countDocuments({ isActive: true });
+
     res.status(200).json({
       data: {
         totalUsers,
         totalStreams,
-        activeSports: activeSports.length
+        activeSports,
       },
     });
   } catch (err) {
-    const errorMessage = err.response?.data?.message || err.message;
-    res.status(500).json({ error: 'Failed to fetch live stats', details: errorMessage });
+    res.status(500).json({ error: "Failed to fetch live stats", details: err.message });
   }
 };
+
 exports.getStreamsPerDay = async (req, res, next) => {
   try {
     const { data: streamData } = await axios.get(
