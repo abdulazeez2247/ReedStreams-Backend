@@ -16,7 +16,7 @@ connectDB();
 
 // Middleware
 app.use(express.json({ limit: '10kb' }));
-
+app.set('trust proxy', true);
 app.use(cors({
   origin: ["https://reed-streams-live-sports-doxe.vercel.app", "https://admin-pi-ruby.vercel.app", "http://127.0.0.1:5500", "https://reedstreams.live"], 
   credentials: true,
