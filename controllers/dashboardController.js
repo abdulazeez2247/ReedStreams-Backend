@@ -1,6 +1,8 @@
 const axios = require('axios');
 const dotenv = require('dotenv').config();
 const Match = require('../models/match');
+const UserSession = require('../models/UserSession');
+const StreamEvent = require('../models/StreamEvent');
 const AppError = require('../utils/appError');
 
 const API_BASE_URL = 'https://api.thesports.com';
@@ -13,29 +15,90 @@ const SPORTS_MAPPING = {
   baseball: { id: 6, name: 'Baseball', slug: 'baseball' },
 };
 
+// exports.getLiveStats = async (req, res, next) => {
+//   try {
+//     const { data: streamData } = await axios.get(
+//       `${API_BASE_URL}/v1/video/play/stream/list`,
+//       {
+//         params: { user: USER_KEY, secret: SECRET_KEY },
+//         timeout: 30000,
+//       }
+//     );
+
+//     if (!streamData?.results?.length) {
+//       return res.status(404).json({ error: 'No live streams found from API' });
+//     }
+
+//     const totalStreams = streamData.results.length;
+//     const totalUsers = Math.floor(Math.random() * 10000) + 500;
+//     const activeSports = [...new Set(streamData.results.map(s => s.sport_id))].length;
+
+//     res.status(200).json({
+//       data: {
+//         totalUsers,
+//         totalStreams,
+//         activeSports,
+//       },
+//     });
+//   } catch (err) {
+//     const errorMessage = err.response?.data?.message || err.message;
+//     res.status(500).json({ error: 'Failed to fetch live stats', details: errorMessage });
+//   }
+// };
 exports.getLiveStats = async (req, res, next) => {
   try {
-    const { data: streamData } = await axios.get(
-      `${API_BASE_URL}/v1/video/play/stream/list`,
+    // Get unique users in last 24 hours
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const totalUsers = await UserSession.countDocuments({
+      lastSeen: { $gte: twentyFourHoursAgo }
+    });
+    
+    // Get active streams (stream events started but not stopped in last 3 hours)
+    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
+    
+    const activeStreams = await StreamEvent.aggregate([
       {
-        params: { user: USER_KEY, secret: SECRET_KEY },
-        timeout: 30000,
+        $match: {
+          timestamp: { $gte: threeHoursAgo },
+          action: { $in: ['start', 'stop'] }
+        }
+      },
+      {
+        $group: {
+          _id: '$ipAddress',
+          events: { $push: { action: '$action', timestamp: '$timestamp' } }
+        }
+      },
+      {
+        $match: {
+          $expr: {
+            $let: {
+              vars: {
+                lastEvent: { $arrayElemAt: ['$events', -1] }
+              },
+              in: { $eq: ['$$lastEvent.action', 'start'] }
+            }
+          }
+        }
+      },
+      {
+        $count: 'activeStreams'
       }
-    );
-
-    if (!streamData?.results?.length) {
-      return res.status(404).json({ error: 'No live streams found from API' });
-    }
-
-    const totalStreams = streamData.results.length;
-    const totalUsers = Math.floor(Math.random() * 10000) + 500;
-    const activeSports = [...new Set(streamData.results.map(s => s.sport_id))].length;
-
+    ]);
+    
+    const totalStreams = activeStreams[0]?.activeStreams || 0;
+    
+    // Get active sports from your actual matches
+    const activeSports = await Match.distinct('sport', {
+      isVisible: true,
+      matchStatus: { $in: ['LIVE', 'UPCOMING'] }
+    });
+    
     res.status(200).json({
       data: {
         totalUsers,
         totalStreams,
-        activeSports,
+        activeSports: activeSports.length
       },
     });
   } catch (err) {
@@ -43,7 +106,6 @@ exports.getLiveStats = async (req, res, next) => {
     res.status(500).json({ error: 'Failed to fetch live stats', details: errorMessage });
   }
 };
-
 exports.getStreamsPerDay = async (req, res, next) => {
   try {
     const { data: streamData } = await axios.get(
