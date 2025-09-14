@@ -5,11 +5,13 @@ const {
   getLiveStats,
   getStreamsPerDay,
   getMostStreamedSports,
-  getLiveMatchesBySport
+  getLiveMatchesBySport,
+  getAllMatches
 } = require('../controllers/dashboardController'); 
 
 router.get('/live-stats', getLiveStats);
 router.get('/streams-per-day', getStreamsPerDay);
 router.get('/most-streamed-sports', getMostStreamedSports);
 router.get('/matches',getLiveMatchesBySport);
+router.get('/all-matches', getAllMatches); 
 module.exports = router;
