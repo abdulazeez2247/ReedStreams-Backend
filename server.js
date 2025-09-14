@@ -6,11 +6,8 @@ const connectDB = require('./config/db');
 const matchRoutes = require('./routes/matchRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
-const analyticsRoutes = require('./routes/analytics');
+
 const AppError = require('./utils/appError');
-const logUser = require("./middlewares/logUser");
-
-
 
 const app = express();
 const port = process.env.PORT || 7000;
@@ -20,9 +17,6 @@ connectDB();
 
 // Middleware
 app.use(express.json({ limit: '10kb' }));
-app.use('/api/analytics', analyticsRoutes);
-app.use(logUser);
-app.set('trust proxy', true);
 
 app.use(cors({
   origin: ["https://reed-streams-live-sports-doxe.vercel.app", "https://admin-pi-ruby.vercel.app", "http://127.0.0.1:5500", "https://reedstreams.live"], 

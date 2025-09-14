@@ -15,36 +15,36 @@ const SPORTS_MAPPING = {
   baseball: { id: 6, name: 'Baseball', slug: 'baseball' },
 };
 
-// exports.getLiveStats = async (req, res, next) => {
-//   try {
-//     const { data: streamData } = await axios.get(
-//       `${API_BASE_URL}/v1/video/play/stream/list`,
-//       {
-//         params: { user: USER_KEY, secret: SECRET_KEY },
-//         timeout: 30000,
-//       }
-//     );
+exports.getLiveStats = async (req, res, next) => {
+  try {
+    const { data: streamData } = await axios.get(
+      `${API_BASE_URL}/v1/video/play/stream/list`,
+      {
+        params: { user: USER_KEY, secret: SECRET_KEY },
+        timeout: 30000,
+      }
+    );
 
-//     if (!streamData?.results?.length) {
-//       return res.status(404).json({ error: 'No live streams found from API' });
-//     }
+    if (!streamData?.results?.length) {
+      return res.status(404).json({ error: 'No live streams found from API' });
+    }
 
-//     const totalStreams = streamData.results.length;
-//     const totalUsers = Math.floor(Math.random() * 10000) + 500;
-//     const activeSports = [...new Set(streamData.results.map(s => s.sport_id))].length;
+    const totalStreams = streamData.results.length;
+    const totalUsers = Math.floor(Math.random() * 10000) + 500;
+    const activeSports = [...new Set(streamData.results.map(s => s.sport_id))].length;
 
-//     res.status(200).json({
-//       data: {
-//         totalUsers,
-//         totalStreams,
-//         activeSports,
-//       },
-//     });
-//   } catch (err) {
-//     const errorMessage = err.response?.data?.message || err.message;
-//     res.status(500).json({ error: 'Failed to fetch live stats', details: errorMessage });
-//   }
-// };
+    res.status(200).json({
+      data: {
+        totalUsers,
+        totalStreams,
+        activeSports,
+      },
+    });
+  } catch (err) {
+    const errorMessage = err.response?.data?.message || err.message;
+    res.status(500).json({ error: 'Failed to fetch live stats', details: errorMessage });
+  }
+};
 // exports.getLiveStats = async (req, res, next) => {
 //   try {
 //     // Get unique users in last 24 hours
@@ -106,28 +106,6 @@ const SPORTS_MAPPING = {
 //     res.status(500).json({ error: 'Failed to fetch live stats', details: errorMessage });
 //   }
 // };
-
-exports.getLiveStats = async (req, res) => {
-  try {
-    const totalUsers = await Visitor.countDocuments();
-    const totalStreams = await Stream.aggregate([
-      { $group: { _id: null, total: { $sum: "$playCount" } } }
-    ]).then(r => (r[0] ? r[0].total : 0));
-
-    const activeSports = await Stream.countDocuments({ isActive: true });
-
-    res.status(200).json({
-      data: {
-        totalUsers,
-        totalStreams,
-        activeSports,
-      },
-    });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch live stats", details: err.message });
-  }
-};
-
 exports.getStreamsPerDay = async (req, res, next) => {
   try {
     const { data: streamData } = await axios.get(
