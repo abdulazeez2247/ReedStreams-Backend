@@ -1,8 +1,8 @@
 const axios = require('axios');
 const dotenv = require('dotenv').config();
 const Match = require('../models/match');
-const Visitor = require('../models/visitor');
-const stream = require('../models/stream');
+// const Visitor = require('../models/visitor');
+// const stream = require('../models/stream');
 const AppError = require('../utils/appError');
 
 const API_BASE_URL = 'https://api.thesports.com';
